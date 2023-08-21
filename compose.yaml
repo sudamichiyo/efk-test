@@ -1,23 +1,21 @@
-version: "3"
+name: efk-test
+
 services:
-  fluentd:
-    build: ./fluentd
-    volumes:
-      - ./fluentd/conf:/fluentd/etc
-    ports:
-      - "24224:24224"
-      - "24224:24224/udp"
-      - "5140:5140"
-    networks:
-      efk-net:
-        ipv4_address: 172.22.0.10
+  ### Web
+  web:
+    build:
+      context: ./.docker/web
+      dockerfile: Dockerfile
+    container_name: web
+    depends_on:
+      - fluentd
     environment:
       TZ: Asia/Tokyo
-  
-  web:
-    image: nginx:alpine-slim
     ports:
-      - 8000:80
+      - mode: ingress
+        published: 8080
+        target: 80
+        protocol: tcp
     logging:
       driver: "fluentd"
       options:
@@ -29,32 +27,63 @@ services:
     networks:
       efk-net:
         ipv4_address: 172.22.0.20
-    depends_on:
-      - fluentd
+
+  ### Fluend
+  fluentd:
+    build:
+      context: ./.docker/fluentd
+      dockerfile: Dockerfile
+    container_name: fluentd
     environment:
       TZ: Asia/Tokyo
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+      - "5140:5140"
+    volumes:
+      - type: bind
+        source: ./fluentd/conf
+        target: /fluentd/etc
+        bind:
+          create_host_path: true
+    networks:
+      efk-net:
+        ipv4_address: 172.22.0.10
 
+  ### Elasticsearch
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.1.2
+    build:
+      context: ./.docker/elasticsearch
+      dockerfile: Dockerfile
     container_name: elasticsearch
     environment:
       - "discovery.type=single-node"
-      - xpack.security.enabled=false
+      - "xpack.security.enabled=false"
       - "TZ=Asia/Tokyo"
     ports:
-      - "9200:9200"
+      - mode: ingress
+        published: 9200
+        target: 9200
+        protocol: tcp
     networks:
       - efk-net
 
+  ### Kibana
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.1.2
-    ports:
-      - "5601:5601"
-    networks:
-      - efk-net
+    build:
+      context: ./.docker/kibana
+      dockerfile: Dockerfile
+    container_name: kibana
     environment:
       - "TZ=Asia/Tokyo"
-      - i18n.locale=ja-JP
+      - "i18n.locale=ja-JP"
+    ports:
+      - mode: ingress
+        published: 5601
+        target: 5601
+        protocol: tcp
+    networks:
+      - efk-net
 
 networks:
   efk-net:
@@ -63,4 +92,3 @@ networks:
       driver: default
       config:
         - subnet: 172.22.0.0/16
-
