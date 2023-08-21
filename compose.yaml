@@ -1,51 +1,55 @@
 name: efk-test
 
 services:
-  ### Web
-  web:
-    build:
-      context: ./.docker/web
-      dockerfile: Dockerfile
-    container_name: web
-    depends_on:
-      - fluentd
-    environment:
-      TZ: Asia/Tokyo
-    ports:
-      - mode: ingress
-        published: 8080
-        target: 80
-        protocol: tcp
-    logging:
-      driver: "fluentd"
-      options:
-        fluentd-address: 172.22.0.10:24224
-        fluentd-async-connect: "true"
-        fluentd-retry-wait: 2s
-        fluentd-max-retries: 30
-        tag: httpd.access
-    networks:
-      efk-net:
-        ipv4_address: 172.22.0.20
+  # ### Web
+  # web:
+  #   build:
+  #     context: ./.docker/web
+  #     dockerfile: Dockerfile
+  #   container_name: web
+  #   depends_on:
+  #     - fluentd
+  #   environment:
+  #     TZ: Asia/Tokyo
+  #   ports:
+  #     - mode: ingress
+  #       published: 8080
+  #       target: 80
+  #       protocol: tcp
+  #   logging:
+  #     driver: "fluentd"
+  #     options:
+  #       fluentd-address: 172.22.0.10:24224
+  #       fluentd-async-connect: "true"
+  #       fluentd-retry-wait: 2s
+  #       fluentd-max-retries: 30
+  #       tag: httpd.access
+  #   networks:
+  #     efk-net:
+  #       ipv4_address: 172.22.0.20
 
   ### Fluend
   fluentd:
     build:
       context: ./.docker/fluentd
       dockerfile: Dockerfile
+    platform: linux/amd64
     container_name: fluentd
+    privileged: true
+    restart: always
+    tty: true
     environment:
       TZ: Asia/Tokyo
     ports:
       - "24224:24224"
       - "24224:24224/udp"
       - "5140:5140"
-    volumes:
-      - type: bind
-        source: ./fluentd/conf
-        target: /fluentd/etc
-        bind:
-          create_host_path: true
+    # volumes:
+    #   - type: bind
+    #     source: ./fluentd/conf
+    #     target: /fluentd/etc
+    #     bind:
+    #       create_host_path: true
     networks:
       efk-net:
         ipv4_address: 172.22.0.10
@@ -56,6 +60,9 @@ services:
       context: ./.docker/elasticsearch
       dockerfile: Dockerfile
     container_name: elasticsearch
+    privileged: true
+    restart: always
+    tty: true
     environment:
       - "discovery.type=single-node"
       - "xpack.security.enabled=false"
@@ -74,6 +81,9 @@ services:
       context: ./.docker/kibana
       dockerfile: Dockerfile
     container_name: kibana
+    privileged: true
+    restart: always
+    tty: true
     environment:
       - "TZ=Asia/Tokyo"
       - "i18n.locale=ja-JP"
