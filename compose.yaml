@@ -1,0 +1,66 @@
+version: "3"
+services:
+  fluentd:
+    build: ./fluentd
+    volumes:
+      - ./fluentd/conf:/fluentd/etc
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+      - "5140:5140"
+    networks:
+      efk-net:
+        ipv4_address: 172.22.0.10
+    environment:
+      TZ: Asia/Tokyo
+  
+  web:
+    image: nginx:alpine-slim
+    ports:
+      - 8000:80
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: 172.22.0.10:24224
+        fluentd-async-connect: "true"
+        fluentd-retry-wait: 2s
+        fluentd-max-retries: 30
+        tag: httpd.access
+    networks:
+      efk-net:
+        ipv4_address: 172.22.0.20
+    depends_on:
+      - fluentd
+    environment:
+      TZ: Asia/Tokyo
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.1.2
+    container_name: elasticsearch
+    environment:
+      - "discovery.type=single-node"
+      - xpack.security.enabled=false
+      - "TZ=Asia/Tokyo"
+    ports:
+      - "9200:9200"
+    networks:
+      - efk-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.1.2
+    ports:
+      - "5601:5601"
+    networks:
+      - efk-net
+    environment:
+      - "TZ=Asia/Tokyo"
+      - i18n.locale=ja-JP
+
+networks:
+  efk-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/16
+
