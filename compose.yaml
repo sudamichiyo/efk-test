@@ -1,34 +1,30 @@
 name: efk-test
 
 services:
-  # ### Web
-  # web:
-  #   build:
-  #     context: ./.docker/web
-  #     dockerfile: Dockerfile
-  #   container_name: web
-  #   depends_on:
-  #     - fluentd
-  #   environment:
-  #     TZ: Asia/Tokyo
-  #   ports:
-  #     - mode: ingress
-  #       published: 8080
-  #       target: 80
-  #       protocol: tcp
-  #   logging:
-  #     driver: "fluentd"
-  #     options:
-  #       fluentd-address: 172.22.0.10:24224
-  #       fluentd-async-connect: "true"
-  #       fluentd-retry-wait: 2s
-  #       fluentd-max-retries: 30
-  #       tag: httpd.access
-  #   networks:
-  #     efk-net:
-  #       ipv4_address: 172.22.0.20
+  ### Nginx
+  nginx:
+    build:
+      context: ./.docker/nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    privileged: true
+    restart: always
+    tty: true
+    environment:
+      - "TZ=Asia/Tokyo"
+    ports:
+      - mode: ingress
+        published: 80
+        target: 80
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: ./nginx
+        target: /usr/share/nginx/html
+        bind:
+          create_host_path: true
 
-  ### Fluend
+  ### Fluentd
   fluentd:
     build:
       context: ./.docker/fluentd
@@ -39,20 +35,26 @@ services:
     restart: always
     tty: true
     environment:
-      TZ: Asia/Tokyo
+      - "TZ=Asia/Tokyo"
     ports:
-      - "24224:24224"
-      - "24224:24224/udp"
-      - "5140:5140"
-    # volumes:
-    #   - type: bind
-    #     source: ./fluentd/conf
-    #     target: /fluentd/etc
-    #     bind:
-    #       create_host_path: true
-    networks:
-      efk-net:
-        ipv4_address: 172.22.0.10
+      - mode: ingress
+        published: 24224
+        target: 24224
+        protocol: tcp
+      - mode: ingress
+        published: 24224
+        target: 24224
+        protocol: udp
+      - mode: ingress
+        published: 5140
+        target: 5140
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: ./fluentd/config
+        target: /fluentd/etc
+        bind:
+          create_host_path: true
 
   ### Elasticsearch
   elasticsearch:
@@ -72,8 +74,6 @@ services:
         published: 9200
         target: 9200
         protocol: tcp
-    networks:
-      - efk-net
 
   ### Kibana
   kibana:
@@ -87,18 +87,9 @@ services:
     environment:
       - "TZ=Asia/Tokyo"
       - "i18n.locale=ja-JP"
+      - "ELASTICSEARCH_HOSTS=http://elasticsearch:9200"
     ports:
       - mode: ingress
         published: 5601
         target: 5601
         protocol: tcp
-    networks:
-      - efk-net
-
-networks:
-  efk-net:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.22.0.0/16
