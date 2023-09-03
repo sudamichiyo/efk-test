@@ -1,6 +1,6 @@
 # efk-test
 
-**efk-stack: Verify efk stack with docker compose.**
+**efk-stack: verifying efk stack with docker compose**
 
 ## Overview
 
@@ -26,8 +26,6 @@ Kibana is a highly flexible and powerful visualization tool that supports data e
 
 ## Run Locally
 
-### Commands
-
 ```shell
 ### Start the docker-compose.
 $ docker compose up -d
@@ -50,11 +48,6 @@ nginx         efk-test-nginx
 $ docker compose logs -f
 ```
 
-### Kibana WebUI
+## References
 
-- http://localhost:5601/app/integrations/browse
-- http://localhost:5601/app/management/kibana/dataViews
-
-# Refs
-
-- https://docs.fluentd.org/container-deployment/docker-compose
+- https://docs.fluentd.org/configuration/config-file

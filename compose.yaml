@@ -14,23 +14,33 @@ services:
       - "TZ=Asia/Tokyo"
     ports:
       - mode: ingress
-        published: 80
+        published: 8090
         target: 80
         protocol: tcp
     volumes:
       - type: bind
-        source: ./nginx
+        source: ./.docker/nginx/config/nginx.conf
+        target: /etc/nginx/nginx.conf
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ./.docker/nginx/html
         target: /usr/share/nginx/html
         bind:
           create_host_path: true
+      - type: bind
+        source: ./.docker/nginx/log
+        target: /var/log/nginx
+        bind:
+          create_host_path: true
 
-  ### Fluentd
+  ### Fluentd: logs forwarder
   fluentd:
     build:
       context: ./.docker/fluentd
       dockerfile: Dockerfile
-    platform: linux/amd64
     container_name: fluentd
+    platform: linux/amd64
     privileged: true
     restart: always
     tty: true
@@ -51,12 +61,17 @@ services:
         protocol: tcp
     volumes:
       - type: bind
-        source: ./fluentd/config
+        source: ./.docker/fluentd/config
         target: /fluentd/etc
         bind:
           create_host_path: true
+      - type: bind
+        source: ./.docker/nginx/log
+        target: /var/log/nginx
+        bind:
+          create_host_path: true
 
-  ### Elasticsearch
+  ### Elasticsearch: logs store
   elasticsearch:
     build:
       context: ./.docker/elasticsearch
@@ -65,9 +80,14 @@ services:
     privileged: true
     restart: always
     tty: true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     environment:
       - "discovery.type=single-node"
-      - "xpack.security.enabled=false"
+      - "xpack.security.enabled=false" # Basic auth / SSL disable
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - "TZ=Asia/Tokyo"
     ports:
       - mode: ingress
@@ -75,7 +95,7 @@ services:
         target: 9200
         protocol: tcp
 
-  ### Kibana
+  ### Kibana: log query (KQL - Kibana QL)
   kibana:
     build:
       context: ./.docker/kibana
