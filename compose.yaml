@@ -1,66 +1,115 @@
-version: "3"
-services:
-  fluentd:
-    build: ./fluentd
-    volumes:
-      - ./fluentd/conf:/fluentd/etc
-    ports:
-      - "24224:24224"
-      - "24224:24224/udp"
-      - "5140:5140"
-    networks:
-      efk-net:
-        ipv4_address: 172.22.0.10
-    environment:
-      TZ: Asia/Tokyo
-  
-  web:
-    image: nginx:alpine-slim
-    ports:
-      - 8000:80
-    logging:
-      driver: "fluentd"
-      options:
-        fluentd-address: 172.22.0.10:24224
-        fluentd-async-connect: "true"
-        fluentd-retry-wait: 2s
-        fluentd-max-retries: 30
-        tag: httpd.access
-    networks:
-      efk-net:
-        ipv4_address: 172.22.0.20
-    depends_on:
-      - fluentd
-    environment:
-      TZ: Asia/Tokyo
+name: efk-test
 
+services:
+  ### Nginx
+  nginx:
+    build:
+      context: ./.docker/nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    privileged: true
+    restart: always
+    tty: true
+    environment:
+      - "TZ=Asia/Tokyo"
+    ports:
+      - mode: ingress
+        published: 8090
+        target: 80
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: ./.docker/nginx/config/nginx.conf
+        target: /etc/nginx/nginx.conf
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ./.docker/nginx/html
+        target: /usr/share/nginx/html
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ./.docker/nginx/log
+        target: /var/log/nginx
+        bind:
+          create_host_path: true
+
+  ### Fluentd: logs forwarder
+  fluentd:
+    build:
+      context: ./.docker/fluentd
+      dockerfile: Dockerfile
+    container_name: fluentd
+    platform: linux/amd64
+    privileged: true
+    restart: always
+    tty: true
+    environment:
+      - "TZ=Asia/Tokyo"
+    ports:
+      - mode: ingress
+        published: 24224
+        target: 24224
+        protocol: tcp
+      - mode: ingress
+        published: 24224
+        target: 24224
+        protocol: udp
+      - mode: ingress
+        published: 5140
+        target: 5140
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: ./.docker/fluentd/config
+        target: /fluentd/etc
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ./.docker/nginx/log
+        target: /var/log/nginx
+        bind:
+          create_host_path: true
+
+  ### Elasticsearch: logs store
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.1.2
+    build:
+      context: ./.docker/elasticsearch
+      dockerfile: Dockerfile
     container_name: elasticsearch
+    privileged: true
+    restart: always
+    tty: true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     environment:
       - "discovery.type=single-node"
-      - xpack.security.enabled=false
+      - "xpack.security.enabled=false" # Basic auth / SSL disable
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - "TZ=Asia/Tokyo"
     ports:
-      - "9200:9200"
-    networks:
-      - efk-net
+      - mode: ingress
+        published: 9200
+        target: 9200
+        protocol: tcp
 
+  ### Kibana: log query (KQL - Kibana QL)
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.1.2
-    ports:
-      - "5601:5601"
-    networks:
-      - efk-net
+    build:
+      context: ./.docker/kibana
+      dockerfile: Dockerfile
+    container_name: kibana
+    privileged: true
+    restart: always
+    tty: true
     environment:
       - "TZ=Asia/Tokyo"
-      - i18n.locale=ja-JP
-
-networks:
-  efk-net:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.22.0.0/16
-
+      - "i18n.locale=ja-JP"
+      - "ELASTICSEARCH_HOSTS=http://elasticsearch:9200"
+    ports:
+      - mode: ingress
+        published: 5601
+        target: 5601
+        protocol: tcp
