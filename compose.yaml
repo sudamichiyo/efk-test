@@ -1,38 +1,34 @@
 name: efk-test
 
 services:
-  ### Nginx
-  nginx:
+  ### Node: Pseudo CYPHONIC Node
+  node:
     build:
-      context: ./.docker/nginx
+      context: ./.docker/node
       dockerfile: Dockerfile
-    container_name: nginx
+    container_name: node
+    environment:
+      TZ: Asia/Tokyo
+    ports:
+      - mode: ingress
+        target: 4501
+        protocol: tcp
+      - mode: ingress
+        target: 4502
+        protocol: udp
+      - mode: ingress
+        target: 4503
+        protocol: udp
     privileged: true
     restart: always
     tty: true
-    environment:
-      - "TZ=Asia/Tokyo"
-    ports:
-      - mode: ingress
-        published: 8090
-        target: 80
-        protocol: tcp
     volumes:
       - type: bind
-        source: ./.docker/nginx/config/nginx.conf
-        target: /etc/nginx/nginx.conf
+        source: ./.docker/node/efk-test
+        target: /go/node/efk-test
         bind:
           create_host_path: true
-      - type: bind
-        source: ./.docker/nginx/html
-        target: /usr/share/nginx/html
-        bind:
-          create_host_path: true
-      - type: bind
-        source: ./.docker/nginx/log
-        target: /var/log/nginx
-        bind:
-          create_host_path: true
+    working_dir: /go/node/efk-test
 
   ### Fluentd: logs forwarder
   fluentd:
