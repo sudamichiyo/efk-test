@@ -44,17 +44,17 @@ services:
       - "TZ=Asia/Tokyo"
     ports:
       - mode: ingress
-      published: 24224
-      target: 24224
-      protocol: tcp
+        published: 24224
+        target: 24224
+        protocol: tcp
       - mode: ingress
-      published: 24224
-      target: 24224
-      protocol: udp
+        published: 24224
+        target: 24224
+        protocol: udp
       - mode: ingress
-      published: 5140
-      target: 5140
-      protocol: tcp
+        published: 5140
+        target: 5140
+        protocol: tcp
     volumes:
       - type: bind
         source: ./.docker/fluentd/config
@@ -62,8 +62,8 @@ services:
         bind:
           create_host_path: true
       - type: bind
-        source: ./.docker/nginx/log
-        target: /var/log/nginx
+        source: ./.docker/node/efk-test/log
+        target: /var/log
         bind:
           create_host_path: true
 
