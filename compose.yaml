@@ -1,12 +1,12 @@
 name: efk-test
 
 services:
-  ### Node: Pseudo CYPHONIC Node
-  node:
+  ### Service: Pseudo CYPHONIC Cloud(AS, NMS, TRS)
+  service:
     build:
-      context: ./.docker/node
+      context: ./.docker/service
       dockerfile: Dockerfile
-    container_name: node
+    container_name: service
     environment:
       TZ: Asia/Tokyo
     ports:
@@ -24,11 +24,11 @@ services:
     tty: true
     volumes:
       - type: bind
-        source: ./.docker/node/efk-test
-        target: /go/node/efk-test
+        source: ./.docker/service/efk-test
+        target: /go/service/efk-test
         bind:
           create_host_path: true
-    working_dir: /go/node/efk-test
+    working_dir: /go/service/efk-test
     
   ### Fluentd: logs forwarder
   fluentd:
