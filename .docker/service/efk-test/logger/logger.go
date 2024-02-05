@@ -22,21 +22,25 @@ func InitZap() {
 		logLevel,
 	)
 
-	// Output as a log file
-	logCore := zapcore.NewCore(
-		zapcore.NewJSONEncoder(config()),
-		zapcore.AddSync(setFile()),
-		logLevel,
-	)
+	/*
+		// Output as a log file
+		logCore := zapcore.NewCore(
+			zapcore.NewJSONEncoder(config()),
+			zapcore.AddSync(setFile()),
+			logLevel,
+		)
+	*/
 
 	logger := zap.New(zapcore.NewTee(
-		logCore,
+		stdCore,
 	))
 
-	logger = zap.New(zapcore.NewTee(
-		stdCore,
-		logCore,
-	))
+	/*
+		logger = zap.New(zapcore.NewTee(
+			stdCore,
+			logCore,
+		))
+	*/
 
 	zap.ReplaceGlobals(logger)
 }

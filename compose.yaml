@@ -22,6 +22,12 @@ services:
     privileged: true
     restart: always
     tty: true
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: "localhost:24224"
+        # tag: "service.{{.Name}}"
+        fluentd-async: "true"
     volumes:
       - type: bind
         source: ./.docker/service/efk-test
@@ -62,7 +68,7 @@ services:
         bind:
           create_host_path: true
       - type: bind
-        source: ./.docker/node/efk-test/log
+        source: ./.docker/service/efk-test/log
         target: /var/log
         bind:
           create_host_path: true
